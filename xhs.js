@@ -453,10 +453,44 @@ function handleShareRequest() {
   if (info) triggerById(info.id, 'share:' + info.channel);
 }
 
+function requestResult() {
+  var result = {};
+  if (!$request) return result;
+
+  if (typeof $request.body !== 'undefined') result.body = $request.body;
+
+  var headers = {};
+  var src = $request.headers || {};
+  for (var k in src) {
+    if (Object.prototype.hasOwnProperty.call(src, k)) headers[k] = src[k];
+  }
+
+  var hasContentType = false;
+  for (var h in headers) {
+    if (Object.prototype.hasOwnProperty.call(headers, h) && h.toLowerCase() === 'content-type') {
+      hasContentType = true;
+      break;
+    }
+  }
+
+  // Loon 的 request 脚本在 $done({}) 时可能丢掉 Content-Type，
+  // 服务端会把 body 当成空 -> 400 "param is required"。显式回传并补齐。
+  if (!hasContentType) {
+    var url = $request.url || '';
+    if (LIKE_RE.test(url)) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8';
+    } else if (COLLECT_RE.test(url) || SHARE_RE.test(url)) {
+      headers['Content-Type'] = 'application/json';
+    }
+  }
+  result.headers = headers;
+  return result;
+}
+
 function main() {
+  var isResponse = typeof $response !== 'undefined';
   try {
     var url = ($request && $request.url) || '';
-    var isResponse = typeof $response !== 'undefined';
 
     if (isResponse && CACHE_RE.test(url)) handleCache();
     else if (!isResponse && LIKE_RE.test(url)) handleLikeRequest();
@@ -468,7 +502,7 @@ function main() {
       console.log('[xhs] error: ' + (e && e.message ? e.message : e));
     } catch (e2) {}
   } finally {
-    $done({});
+    $done(isResponse ? {} : requestResult());
   }
 }
 

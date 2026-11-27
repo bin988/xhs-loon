@@ -19,7 +19,7 @@ test('README 有安装/更新/排查/隐私', () => {
 test('README 有插件 URL、脚本版本号与“必须点通知”限制', () => {
   const t = read('README.md');
   assert.ok(t.includes('https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.plugin'));
-  assert.ok(t.includes('?v=20261127'));
+  assert.ok(t.includes('?v=20261128'));
   assert.ok(t.includes('点通知'));
   assert.ok(t.includes('12 小时'));
 });

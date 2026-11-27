@@ -48,6 +48,7 @@ function newEnv() {
         url: entry.url,
         method: entry.method || 'GET',
         body: entry.reqBody,
+        headers: entry.headers || {},
       },
     };
     if (Object.prototype.hasOwnProperty.call(entry, 'respBody')) {
@@ -174,6 +175,32 @@ test('缓存 miss 写 wanted，且不弹', () => {
   const wanted = JSON.parse(env.store['xhs_wanted_v1']);
   assert.ok(wanted[ID_IMG]);
   assert.equal(env.notices.length, 0);
+});
+
+test('request 脚本回传原始 body 与 Content-Type（Loon 会丢 CT）', () => {
+  const env = newEnv();
+  const likeBody = 'oid=discovery.' + ID_IMG;
+  env.run({ url: URL_LIKE, method: 'POST', reqBody: likeBody });
+  assert.equal(env.dones[0].body, likeBody);
+  assert.match(env.dones[0].headers['Content-Type'], /x-www-form-urlencoded/);
+
+  const collectBody = JSON.stringify({ note_id: ID_IMG });
+  env.run({ url: URL_COLLECT, method: 'POST', reqBody: collectBody });
+  assert.equal(env.dones[1].body, collectBody);
+  assert.equal(env.dones[1].headers['Content-Type'], 'application/json');
+});
+
+test('request 脚本保留原有 headers，不覆盖已有 Content-Type', () => {
+  const env = newEnv();
+  env.run({
+    url: URL_COLLECT,
+    method: 'POST',
+    reqBody: '{"note_id":"' + ID_IMG + '"}',
+    headers: { 'content-type': 'application/json', 'X-Test': '1' },
+  });
+  assert.equal(env.dones[0].headers['X-Test'], '1');
+  assert.equal(env.dones[0].headers['content-type'], 'application/json');
+  assert.equal(env.dones[0].headers['Content-Type'], undefined);
 });
 
 test('每次运行只调用一次 $done', () => {
