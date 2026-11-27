@@ -452,13 +452,22 @@ function trigger(note, source) {
     openUrl: buildShortcutUrl(SHORTCUT_NAME, payload),
     clipboard: JSON.stringify(payload)
   };
-  var liveCount = 0;
-  for (var li = 0; li < payload.i.length; li++) {
-    if (payload.i[li].l) liveCount++;
+  // 通知 body 直接放一份最小 payload，供 iOS 27「收到通知时」自动化读取；
+  // 太长（>3500 字）时退回人类可读文案，此时只能点通知走 openUrl。
+  var auto = { f: payload.f, i: payload.i, l: payload.l, v: payload.v };
+  var autoJson = JSON.stringify(auto);
+  var text;
+  if (autoJson.length <= 3500) {
+    text = autoJson;
+  } else {
+    var liveCount = 0;
+    for (var li = 0; li < payload.i.length; li++) {
+      if (payload.l[li]) liveCount++;
+    }
+    text = '点击保存 ' + payload.i.length + ' 图'
+      + (liveCount ? '（含 ' + liveCount + ' 实况）' : '')
+      + (payload.v ? ' + 视频' : '');
   }
-  var text = '点击保存 ' + payload.i.length + ' 图'
-    + (liveCount ? '（含 ' + liveCount + ' 实况）' : '')
-    + (payload.v ? ' + 视频' : '');
   try {
     $notification.post('小红书 · 源文件', note.title || note.id, text, attach);
   } catch (e) {

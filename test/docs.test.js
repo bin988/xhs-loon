@@ -19,7 +19,7 @@ test('README 有安装/更新/排查/隐私', () => {
 test('README 有插件 URL、脚本版本号与“必须点通知”限制', () => {
   const t = read('README.md');
   assert.ok(t.includes('https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.plugin'));
-  assert.ok(t.includes('?v=20261130'));
+  assert.ok(t.includes('?v=20261131'));
   assert.ok(t.includes('点通知'));
   assert.ok(t.includes('12 小时'));
 });
@@ -51,6 +51,14 @@ test('recipe 明确 payload 键 t/a/i/u/l/f/v/s/id 与兜底 clipboard', () => {
   for (const s of ['`t`', '`i`', '`l`', '`f`', '`v`', '`s`', '`id`', 'clipboard']) {
     assert.ok(t.includes(s), s);
   }
+});
+
+test('README 覆盖 iOS 27 后台自动化', () => {
+  const t = read('README.md');
+  for (const s of ['iOS 27', '收到通知', '通知正文', '自动化']) {
+    assert.ok(t.includes(s), s);
+  }
+  assert.ok(read('shortcut-recipe.md').includes('零点击'));
 });
 
 test('文档覆盖实况视频与文件名规则', () => {

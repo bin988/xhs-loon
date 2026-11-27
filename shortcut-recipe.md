@@ -53,6 +53,13 @@ shortcuts://run-shortcut?name=小红书源文件&input=text&text=<payload>
 {"t":"测试","a":"作者","f":"作者_123_测试","i":[""],"l":[""],"v":"","s":"","id":"aaaaaaaaaaaaaaaaaaaaaaaa"}
 ```
 
+## 零点击自动化（iOS 27）
+
+快捷指令的输入既可以是 Loon 通知 `openUrl` 里的完整 JSON，也可以是「收到通知」自动化传入的
+通知正文（最小 JSON，只有 `f/i/l/v`）。两者的解析方式完全相同，不用改动作。
+
+自动化设置见 README 的「零点击（iOS 27 自动化）」一节。
+
 ## 实况照片
 
 小红书实况图的 `live_photo.media.stream` 里有一段短视频。Loon 会把每张图的实况视频放进

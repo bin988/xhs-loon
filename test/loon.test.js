@@ -81,7 +81,11 @@ test('like 请求+响应(true) 弹通知，openUrl 含原图', () => {
   const n = env.notices[0];
   assert.equal(n.title, '小红书 · 源文件');
   assert.equal(n.subtitle, '测试图文');
-  assert.match(n.content, /2 图/);
+  const auto = JSON.parse(n.content);
+  assert.equal(auto.f, '作者A_123456789_测试图文');
+  assert.equal(auto.i.length, 2);
+  assert.deepEqual(auto.l, ['', '']);
+  assert.equal(auto.v, '');
   const url = decodeURIComponent(n.attach.openUrl);
   assert.ok(url.includes('https://sns-na-i2.xhscdn.com/img1'));
   const payload = JSON.parse(n.attach.clipboard);
@@ -161,7 +165,9 @@ test('视频笔记 payload 含 4K backup 与封面', () => {
   assert.equal(payload.v, 'https://sns-bak-v1.xhscdn.com/4k.mp4');
   assert.deepEqual(payload.i, ['https://sns-na-i2.xhscdn.com/cover']);
   assert.deepEqual(payload.l, ['']);
-  assert.match(env.notices[0].content, /视频/);
+  const auto = JSON.parse(env.notices[0].content);
+  assert.equal(auto.v, 'https://sns-bak-v1.xhscdn.com/4k.mp4');
+  assert.equal(auto.f, '作者B_测试视频');
 });
 
 test('实况图 payload 带上 live 视频与文件名', () => {
