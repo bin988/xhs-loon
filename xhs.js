@@ -33,16 +33,25 @@ function imageUrl(item) {
   return toHttps(bareUrl(cand));
 }
 
-function pickVideoUrl(streamItem) {
+function pickVideoSource(streamItem) {
   if (!streamItem || typeof streamItem !== 'object') return null;
   var backups = streamItem.backup_urls;
-  if (Array.isArray(backups) && backups.length && typeof backups[0] === 'string') {
-    return toHttps(backups[0]);
+  if (Array.isArray(backups)) {
+    for (var i = 0; i < backups.length; i++) {
+      if (typeof backups[i] === 'string' && backups[i]) {
+        return { url: toHttps(backups[i]), src: 1 };
+      }
+    }
   }
   if (typeof streamItem.master_url === 'string' && streamItem.master_url) {
-    return toHttps(streamItem.master_url);
+    return { url: toHttps(streamItem.master_url), src: 0 };
   }
   return null;
+}
+
+function pickVideoUrl(streamItem) {
+  var picked = pickVideoSource(streamItem);
+  return picked ? picked.url : null;
 }
 
 function codecRank(codec) {
@@ -61,11 +70,12 @@ function bestVideo(stream) {
     var w = Number(s.width) || 0;
     var h = Number(s.height) || 0;
     if (!w || !h) return;
-    var url = pickVideoUrl(s);
-    if (!url) return;
+    var picked = pickVideoSource(s);
+    if (!picked) return;
     var codec = String(s.video_codec || key).toLowerCase();
     var cand = {
-      url: url,
+      url: picked.url,
+      src: picked.src,
       w: w,
       h: h,
       px: w * h,
@@ -87,6 +97,11 @@ function bestVideo(stream) {
     }
     if (cand.px !== best.px) {
       if (cand.px > best.px) best = cand;
+      return;
+    }
+    // 同分辨率优先无签名的 backup 链，避免 master 的 sign 过期
+    if (cand.src !== best.src) {
+      if (cand.src > best.src) best = cand;
       return;
     }
     if (cand.rank !== best.rank) {
@@ -148,9 +163,33 @@ function parseNote(obj) {
     author: String(author || ''),
     imgs: imgs,
     v: video ? video.url : '',
+    vpx: video ? video.px : 0,
+    vsrc: video ? video.src : 0,
+    vbr: video ? video.br : 0,
     share: String(share || ''),
     ts: 0
   };
+}
+
+function betterVideo(a, b) {
+  var av = a.v || '';
+  var bv = b.v || '';
+  if (!av && !bv) return { v: '', vpx: 0, vsrc: 0, vbr: 0 };
+  if (!av) return { v: bv, vpx: b.vpx || 0, vsrc: b.vsrc || 0, vbr: b.vbr || 0 };
+  if (!bv) return { v: av, vpx: a.vpx || 0, vsrc: a.vsrc || 0, vbr: a.vbr || 0 };
+
+  var apx = a.vpx || 0;
+  var bpx = b.vpx || 0;
+  if (bpx > apx) return { v: bv, vpx: bpx, vsrc: b.vsrc || 0, vbr: b.vbr || 0 };
+  if (bpx < apx) return { v: av, vpx: apx, vsrc: a.vsrc || 0, vbr: a.vbr || 0 };
+
+  var asrc = a.vsrc || 0;
+  var bsrc = b.vsrc || 0;
+  if (bsrc > asrc) return { v: bv, vpx: bpx, vsrc: bsrc, vbr: b.vbr || 0 };
+  if (bsrc < asrc) return { v: av, vpx: apx, vsrc: asrc, vbr: a.vbr || 0 };
+
+  if ((b.vbr || 0) > (a.vbr || 0)) return { v: bv, vpx: bpx, vsrc: bsrc, vbr: b.vbr || 0 };
+  return { v: av, vpx: apx, vsrc: asrc, vbr: a.vbr || 0 };
 }
 
 function mergeNotes(a, b) {
@@ -159,12 +198,16 @@ function mergeNotes(a, b) {
   for (var i = 0; i < incoming.length && imgs.length < 20; i++) {
     if (imgs.indexOf(incoming[i]) === -1) imgs.push(incoming[i]);
   }
+  var vid = betterVideo(a, b);
   return {
     id: a.id,
     title: b.title || a.title || '',
     author: b.author || a.author || '',
     imgs: imgs,
-    v: a.v || b.v || '',
+    v: vid.v,
+    vpx: vid.vpx,
+    vsrc: vid.vsrc,
+    vbr: vid.vbr,
     share: a.share || b.share || '',
     ts: Math.max(a.ts || 0, b.ts || 0)
   };
@@ -210,6 +253,9 @@ function mergeCache(cache, notes, now, cap) {
       author: n.author || '',
       imgs: (n.imgs || []).slice(0, 20),
       v: n.v || '',
+      vpx: n.vpx || 0,
+      vsrc: n.vsrc || 0,
+      vbr: n.vbr || 0,
       share: n.share || '',
       ts: ts || now
     };

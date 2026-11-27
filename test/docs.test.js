@@ -19,7 +19,7 @@ test('README 有安装/更新/排查/隐私', () => {
 test('README 有插件 URL、脚本版本号与“必须点通知”限制', () => {
   const t = read('README.md');
   assert.ok(t.includes('https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.plugin'));
-  assert.ok(t.includes('?v=20261128'));
+  assert.ok(t.includes('?v=20261129'));
   assert.ok(t.includes('点通知'));
   assert.ok(t.includes('12 小时'));
 });
@@ -36,6 +36,14 @@ test('recipe 视频分支先把文件改名为 video.mp4 再存相簿', () => {
   const t = read('shortcut-recipe.md');
   assert.ok(t.includes('设定名称'), 'Set Name action');
   assert.ok(t.includes('video.mp4'));
+});
+
+test('文档说明 clipboard 兜底依赖较新的 Loon 版本', () => {
+  const readme = read('README.md');
+  const recipe = read('shortcut-recipe.md');
+  assert.ok(readme.includes('clipboard'));
+  assert.ok(readme.includes('较新的 Loon') || readme.includes('Loon 版本'));
+  assert.ok(recipe.includes('较新的 Loon') || recipe.includes('Loon 版本'));
 });
 
 test('recipe 明确 payload 键 t/a/i/v/s/id 与兜底 clipboard', () => {

@@ -45,9 +45,13 @@ shortcuts://run-shortcut?name=小红书源文件&input=text&text=<payload>
 
 ## 兜底：用剪贴板输入
 
-Loon 的通知同时把同一份 JSON 写进了剪贴板。如果 `shortcuts://` 没被拉起，
-可以复制通知里的内容后手动运行一个 `input=clipboard` 版本的快捷指令：
-把第 2 步换成 **获取剪贴板**（Get Clipboard），其余动作相同。
+新版 Loon 支持在点击通知时把同一份 JSON 写入剪贴板（官方 `attach.clipboard`）。
+如果你的 Loon 版本支持，且 `shortcuts://` 没被拉起，可以手动运行一个
+`input=clipboard` 版本的快捷指令：把第 2 步换成 **获取剪贴板**（Get Clipboard），
+其余动作相同。
+
+若你的 Loon 版本不支持 `clipboard`，这一兜底不可用，请优先检查快捷指令名
+是否完全一致、以及快捷指令是否有网络权限。
 
 ## 注意
 

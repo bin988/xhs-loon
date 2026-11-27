@@ -86,8 +86,8 @@ iOS 快捷指令「小红书源文件」
 - subtitle：笔记标题（为空则 note_id）
 - content：`点击保存 N 图` / `点击保存 N 图 + 视频`
 - attach：`{ openUrl: <shortcuts://...>, clipboard: <payload JSON> }`
-  - `clipboard` 是兜底：如果自定义 scheme 没被拉起，用户可手动运行
-    `input=clipboard` 版本的快捷指令。
+  - `clipboard` 是官方 attach 字段（点击通知时写入剪贴板），但旧版 Loon 可能不支持；
+    支持时可手动运行 `input=clipboard` 版本的快捷指令兜底。
 
 ### 持久化 key（`$persistentStore`）
 

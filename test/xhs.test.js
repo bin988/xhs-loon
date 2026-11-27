@@ -11,6 +11,7 @@ const {
   pickVideoUrl,
   bestVideo,
   parseNote,
+  mergeNotes,
   extractNotes,
   mergeCache,
   buildPayload,
@@ -132,6 +133,36 @@ test('bestVideo: 同分辨率码率更高者胜', () => {
     ],
   });
   assert.equal(v.url, 'https://a/high.mp4');
+});
+
+test('extractNotes: 视频记录 vpx/vsrc，便于跨响应合并时比质量', () => {
+  const n = extractNotes(fixture('videofeed.json'))[0];
+  assert.equal(n.vpx, 2160 * 3840);
+  assert.equal(n.vsrc, 1);
+});
+
+test('mergeNotes: 后到的高清视频覆盖先前的低清/签名视频', () => {
+  const id = 'a'.repeat(24);
+  const a = { id: id, imgs: [], v: 'https://master/720.mp4?sign=x', vpx: 720 * 1280, vsrc: 0, vbr: 1, ts: 1 };
+  const b = { id: id, imgs: [], v: 'https://bak/4k.mp4', vpx: 2160 * 3840, vsrc: 1, vbr: 5, ts: 2 };
+  const m = mergeNotes(a, b);
+  assert.equal(m.v, 'https://bak/4k.mp4');
+  assert.equal(m.vpx, 2160 * 3840);
+  assert.equal(m.vsrc, 1);
+});
+
+test('mergeNotes: 同分辨率优先 backup 链而不是签名 master', () => {
+  const id = 'a'.repeat(24);
+  const a = { id: id, imgs: [], v: 'https://master/4k.mp4?sign=x', vpx: 2160 * 3840, vsrc: 0, vbr: 9, ts: 1 };
+  const b = { id: id, imgs: [], v: 'https://bak/4k.mp4', vpx: 2160 * 3840, vsrc: 1, vbr: 1, ts: 2 };
+  assert.equal(mergeNotes(a, b).v, 'https://bak/4k.mp4');
+});
+
+test('pickVideoUrl: backup_urls[0] 为空串时回退 master_url', () => {
+  assert.equal(
+    pickVideoUrl({ backup_urls: [''], master_url: 'http://master/v.mp4?sign=x' }),
+    'https://master/v.mp4?sign=x'
+  );
 });
 
 test('mergeCache: 按 id 去重并按 ts 倒序截断到 cap', () => {
