@@ -32,6 +32,12 @@ test('recipe 覆盖输入解析、循环下载、存相簿、视频分支', () =
   }
 });
 
+test('recipe 视频分支先把文件改名为 video.mp4 再存相簿', () => {
+  const t = read('shortcut-recipe.md');
+  assert.ok(t.includes('设定名称'), 'Set Name action');
+  assert.ok(t.includes('video.mp4'));
+});
+
 test('recipe 明确 payload 键 t/a/i/v/s/id 与兜底 clipboard', () => {
   const t = read('shortcut-recipe.md');
   for (const s of ['`t`', '`i`', '`v`', '`s`', '`id`', 'clipboard']) {

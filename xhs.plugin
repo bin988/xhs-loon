@@ -15,4 +15,4 @@ http-request ^https?://edith\.xiaohongshu\.com/api/sns/v1/note/collect script-pa
 http-request ^https?://edith\.xiaohongshu\.com/api/growth/schubert/share/content script-path=https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.js?v=20261127, requires-body=true, timeout=10, tag=小红书-分享
 
 [Mitm]
-hostname = %APPEND% edith.xiaohongshu.com, rec.xiaohongshu.com
+hostname = edith.xiaohongshu.com, rec.xiaohongshu.com

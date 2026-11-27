@@ -31,7 +31,9 @@ shortcuts://run-shortcut?name=小红书源文件&input=text&text=<payload>
 5. **获取词典值**（Get Dictionary Value）：键填 `v`，得到视频 URL
 6. **如果**（If）`视频` **有任何值**：
    1. **获取 URL 内容**（Get Contents of URL）：URL 选 `视频`
-   2. **存储到照片相簿**（Save to Photo Album）：相簿「小红书」
+   2. **设定名称**（Set Name）：改成 `video.mp4`
+      - 4K 视频常用 fMP4（`.m4s`），不改成 `.mp4` 时「照片」可能不认它是视频
+   3. **存储到照片相簿**（Save to Photo Album）：相簿「小红书」
 7. **显示通知**（Show Notification）：`已保存：` + `t`
 8. 在快捷指令详情里确认允许访问网络（第一次运行会弹权限，选择允许）。
 

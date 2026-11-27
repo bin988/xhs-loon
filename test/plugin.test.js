@@ -8,11 +8,12 @@ const path = require('node:path');
 const FILE = path.join(__dirname, '..', 'xhs.plugin');
 const SCRIPT_URL = 'https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.js?v=20261127';
 
-test('头部与 MITM', () => {
+test('头部与 MITM（Loon 不用 Surge 的 %APPEND%）', () => {
   const text = fs.readFileSync(FILE, 'utf8');
   assert.match(text, /^#!name\s*=/m);
   assert.match(text, /^\[Mitm\]/mi);
-  assert.match(text, /hostname\s*=\s*%APPEND%\s*edith\.xiaohongshu\.com,\s*rec\.xiaohongshu\.com/);
+  assert.match(text, /hostname\s*=\s*edith\.xiaohongshu\.com,\s*rec\.xiaohongshu\.com/);
+  assert.ok(!text.includes('%APPEND%'), 'Loon 不使用 %APPEND%');
 });
 
 test('8 条脚本规则且 URL 带版本号', () => {

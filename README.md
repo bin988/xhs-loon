@@ -34,8 +34,8 @@ Loon 通知：小红书 · 源文件
    https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.plugin
    ```
 
-   启用插件。插件会用 `%APPEND%` 把 `edith.xiaohongshu.com`、`rec.xiaohongshu.com`
-   追加到 MITM 主机列表，不会覆盖你已有的配置。
+   启用插件。插件的 `[Mitm]` 会声明 `edith.xiaohongshu.com`、`rec.xiaohongshu.com`，
+   Loon 会自动把它合并到当前 MITM 主机列表，不会覆盖你已有的配置。
 3. **建快捷指令**：按 [shortcut-recipe.md](shortcut-recipe.md) 建一个名为
    **`小红书源文件`** 的快捷指令（名称必须完全一致）。
 4. **测试**：打开一篇图文笔记 → 点赞 → 通知出现 → 点击 → 相册「小红书」里出现原图。
