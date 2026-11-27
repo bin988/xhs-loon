@@ -287,6 +287,191 @@ function parseShareBody(body) {
   return { id: id, channel: String(j.shareChannel) };
 }
 
+// ===== Loon runtime glue =================================================
+
+var SHORTCUT_NAME = '小红书源文件';
+var CACHE_KEY = 'xhs_cache_v1';
+var DONE_KEY = 'xhs_done_v1';
+var PENDING_KEY = 'xhs_pending_like_v1';
+var WANTED_KEY = 'xhs_wanted_v1';
+var CACHE_CAP = 20;
+var DONE_TTL = 12 * 60 * 60 * 1000;
+var WANTED_TTL = 10 * 60 * 1000;
+
+var CACHE_RE = /\/api\/sns\/(?:v1\/note\/(?:imagefeed|detailfeed\/preload)|v4\/note\/videofeed|v6\/homefeed)(?:[?#]|$)/;
+var LIKE_RE = /\/api\/sns\/v1\/note\/like(?:[?#]|$)/;
+var COLLECT_RE = /\/api\/sns\/v1\/note\/collect(?:[?#]|$)/;
+var SHARE_RE = /\/api\/growth\/schubert\/share\/content(?:[?#]|$)/;
+
+function readJSON(key, fallback) {
+  try {
+    var s = $persistentStore.read(key);
+    if (!s) return fallback;
+    var v = JSON.parse(s);
+    return v === null || v === undefined ? fallback : v;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function writeJSON(key, value) {
+  try {
+    if (value === null || value === undefined) {
+      $persistentStore.write(null, key);
+      return;
+    }
+    $persistentStore.write(JSON.stringify(value), key);
+  } catch (e) {}
+}
+
+function findNote(id) {
+  var cache = readJSON(CACHE_KEY, []);
+  for (var i = 0; i < cache.length; i++) {
+    if (cache[i] && cache[i].id === id) return cache[i];
+  }
+  return null;
+}
+
+function trigger(note, source) {
+  if (!note || !isNoteId(note.id)) return false;
+  var now = Date.now();
+  var done = readJSON(DONE_KEY, {});
+  if (done[note.id] && now - done[note.id] < DONE_TTL) {
+    console.log('[xhs] skip duplicate ' + source + ' ' + note.id);
+    return false;
+  }
+
+  var payload = buildPayload(note);
+  var attach = {
+    openUrl: buildShortcutUrl(SHORTCUT_NAME, payload),
+    clipboard: JSON.stringify(payload)
+  };
+  var text = '点击保存 ' + payload.i.length + ' 图' + (payload.v ? ' + 视频' : '');
+  try {
+    $notification.post('小红书 · 源文件', note.title || note.id, text, attach);
+  } catch (e) {
+    return false;
+  }
+
+  done[note.id] = now;
+  var keep = {};
+  for (var k in done) {
+    if (Object.prototype.hasOwnProperty.call(done, k)
+      && now - done[k] <= 7 * 24 * 60 * 60 * 1000) {
+      keep[k] = done[k];
+    }
+  }
+  writeJSON(DONE_KEY, keep);
+  console.log('[xhs] trigger ' + source + ' ' + note.id);
+  return true;
+}
+
+function triggerById(id, source) {
+  if (!isNoteId(id)) return false;
+  var note = findNote(id);
+  if (!note) {
+    var now = Date.now();
+    var wanted = readJSON(WANTED_KEY, {});
+    wanted[id] = now;
+    var stale = [];
+    for (var k in wanted) {
+      if (Object.prototype.hasOwnProperty.call(wanted, k) && now - wanted[k] > WANTED_TTL) stale.push(k);
+    }
+    for (var i = 0; i < stale.length; i++) delete wanted[stale[i]];
+    writeJSON(WANTED_KEY, wanted);
+    console.log('[xhs] wanted ' + source + ' ' + id);
+    return false;
+  }
+  return trigger(note, source);
+}
+
+function handleCache() {
+  var body = $response && $response.body;
+  if (typeof body !== 'string' || !body) return;
+  var json = tryJSON(body);
+  if (!json) return;
+  var notes = extractNotes(json);
+  if (!notes.length) return;
+
+  var now = Date.now();
+  var cache = mergeCache(readJSON(CACHE_KEY, []), notes, now, CACHE_CAP);
+  writeJSON(CACHE_KEY, cache);
+
+  var wanted = readJSON(WANTED_KEY, {});
+  var changed = false;
+  var ids = [];
+  for (var id in wanted) {
+    if (Object.prototype.hasOwnProperty.call(wanted, id)) ids.push(id);
+  }
+  for (var i = 0; i < ids.length; i++) {
+    var id2 = ids[i];
+    if (now - wanted[id2] > WANTED_TTL) {
+      delete wanted[id2];
+      changed = true;
+      continue;
+    }
+    var note = null;
+    for (var j = 0; j < cache.length; j++) {
+      if (cache[j].id === id2) { note = cache[j]; break; }
+    }
+    if (note && trigger(note, 'wanted')) {
+      delete wanted[id2];
+      changed = true;
+    }
+  }
+  if (changed) writeJSON(WANTED_KEY, wanted);
+}
+
+function handleLikeRequest() {
+  var id = parseLikeBody($request && $request.body);
+  if (id) writeJSON(PENDING_KEY, { id: id, ts: Date.now() });
+}
+
+function handleLikeResponse() {
+  var body = $response && $response.body;
+  var json = typeof body === 'string' ? tryJSON(body) : null;
+  if (!json || !json.data || json.data.inlikes !== true) return;
+
+  var pending = readJSON(PENDING_KEY, null);
+  var id = null;
+  if (pending && pending.id && Date.now() - (pending.ts || 0) < 60 * 1000) {
+    id = pending.id;
+  } else {
+    id = parseLikeBody($request && $request.body);
+  }
+  writeJSON(PENDING_KEY, null);
+  if (id) triggerById(id, 'like');
+}
+
+function handleCollectRequest() {
+  var id = parseCollectBody($request && $request.body);
+  if (id) triggerById(id, 'collect');
+}
+
+function handleShareRequest() {
+  var info = parseShareBody($request && $request.body);
+  if (info) triggerById(info.id, 'share:' + info.channel);
+}
+
+function main() {
+  try {
+    var url = ($request && $request.url) || '';
+    var isResponse = typeof $response !== 'undefined';
+
+    if (isResponse && CACHE_RE.test(url)) handleCache();
+    else if (!isResponse && LIKE_RE.test(url)) handleLikeRequest();
+    else if (isResponse && LIKE_RE.test(url)) handleLikeResponse();
+    else if (!isResponse && COLLECT_RE.test(url)) handleCollectRequest();
+    else if (!isResponse && SHARE_RE.test(url)) handleShareRequest();
+  } catch (e) {
+    try {
+      console.log('[xhs] error: ' + (e && e.message ? e.message : e));
+    } catch (e2) {}
+  } finally {
+    $done({});
+  }
+}
+
 // ===== exports for tests =================================================
 
 if (typeof module !== 'undefined' && module.exports) {
