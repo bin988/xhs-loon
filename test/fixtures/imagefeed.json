@@ -1,0 +1,24 @@
+{
+  "code": 0,
+  "success": true,
+  "data": [
+    {
+      "note_list": [
+        {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaa",
+          "type": "normal",
+          "title": "测试图文",
+          "desc": "描述",
+          "user": { "nickname": "作者A", "id": "cccccccccccccccccccccccc" },
+          "images_list": [
+            { "original": "https://sns-na-i2.xhscdn.com/img1?imageView2/2/w/5000/h/5000/format/webp/q/90&ap=1&sc=ORIGINAL&sign=deadbeef&t=123" },
+            { "original": "https://sns-na-i2.xhscdn.com/img2?imageView2/2/w/5000/h/5000/format/webp/q/90&ap=1&sc=ORIGINAL&sign=deadbeef&t=123" }
+          ],
+          "share_info": {
+            "link": "https://www.xiaohongshu.com/discovery/item/aaaaaaaaaaaaaaaaaaaaaaaa?xsec_token=TEST&xsec_source=app_share"
+          }
+        }
+      ]
+    }
+  ]
+}

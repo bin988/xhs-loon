@@ -1,0 +1,1 @@
+{ "name": "xhs-loon", "private": true, "scripts": { "test": "node --test" } }

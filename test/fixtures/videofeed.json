@@ -1,0 +1,49 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "id": "bbbbbbbbbbbbbbbbbbbbbbbb",
+      "type": "video",
+      "title": "测试视频",
+      "user": { "nickname": "作者B" },
+      "images_list": [
+        { "original": "https://sns-na-i2.xhscdn.com/cover?imageView2/2/w/5000/format/webp&ap=1&sc=V_ORG&sign=deadbeef" }
+      ],
+      "video_info_v2": {
+        "media": {
+          "stream": {
+            "h264": [
+              {
+                "stream_type": 258,
+                "width": 720,
+                "height": 1280,
+                "duration": 1000,
+                "size": 1000000,
+                "avg_bitrate": 2000000,
+                "video_codec": "h264",
+                "master_url": "http://sns-video-v3.xhscdn.com/720.mp4?sign=abc&t=123",
+                "backup_urls": ["http://sns-bak-v1.xhscdn.com/720.mp4"]
+              }
+            ],
+            "h265": [
+              {
+                "stream_type": 532,
+                "width": 2160,
+                "height": 3840,
+                "duration": 1000,
+                "size": 5000000,
+                "avg_bitrate": 6000000,
+                "video_codec": "hevc",
+                "master_url": "http://sns-video-v3.xhscdn.com/4k.mp4?sign=def&t=123",
+                "backup_urls": ["http://sns-bak-v1.xhscdn.com/4k.mp4"]
+              }
+            ]
+          }
+        }
+      },
+      "share_info": {
+        "link": "https://www.xiaohongshu.com/discovery/item/bbbbbbbbbbbbbbbbbbbbbbbb?xsec_token=TEST"
+      }
+    }
+  ]
+}
