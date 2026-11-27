@@ -89,7 +89,9 @@ test('like 请求+响应(true) 弹通知，openUrl 含原图', () => {
     'https://sns-na-i2.xhscdn.com/img1',
     'https://sns-na-i2.xhscdn.com/img2',
   ]);
+  assert.deepEqual(payload.l, ['', '']);
   assert.equal(payload.id, ID_IMG);
+  assert.equal(payload.f, '作者A_123456789_测试图文');
   assert.equal(env.dones.length, 3);
 });
 
@@ -158,7 +160,19 @@ test('视频笔记 payload 含 4K backup 与封面', () => {
   const payload = JSON.parse(env.notices[0].attach.clipboard);
   assert.equal(payload.v, 'https://sns-bak-v1.xhscdn.com/4k.mp4');
   assert.deepEqual(payload.i, ['https://sns-na-i2.xhscdn.com/cover']);
+  assert.deepEqual(payload.l, ['']);
   assert.match(env.notices[0].content, /视频/);
+});
+
+test('实况图 payload 带上 live 视频与文件名', () => {
+  const env = newEnv();
+  const id = 'eeeeeeeeeeeeeeeeeeeeeeee';
+  env.run({ url: 'https://edith.xiaohongshu.com/api/sns/v1/note/imagefeed?note_id=' + id, respBody: fixture('livefeed.json') });
+  env.run({ url: URL_COLLECT, method: 'POST', reqBody: JSON.stringify({ note_id: id }) });
+  assert.equal(env.notices.length, 1);
+  const payload = JSON.parse(env.notices[0].attach.clipboard);
+  assert.deepEqual(payload.l, ['https://sns-bak-v1.xhscdn.com/stream/1/10/66/live1.mp4', '']);
+  assert.equal(payload.f, '作者E_123456789_实况测试');
 });
 
 test('uncollect 与 like/page 不触发', () => {

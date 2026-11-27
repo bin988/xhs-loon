@@ -1,0 +1,39 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "id": "eeeeeeeeeeeeeeeeeeeeeeee",
+      "type": "normal",
+      "title": "实况测试",
+      "user": { "nickname": "作者E", "red_id": "123456789" },
+      "images_list": [
+        {
+          "original": "https://sns-na-i4.xhscdn.com/liveimg1?imageView2/2/w/5000/h/5000/format/webp",
+          "live_photo": {
+            "media": {
+              "stream": {
+                "h265": [
+                  {
+                    "width": 1080,
+                    "height": 1920,
+                    "duration": 8754,
+                    "avg_bitrate": 1526334,
+                    "video_codec": "hevc",
+                    "master_url": "http://sns-video-v6.xhscdn.com/stream/1/10/66/live1.mp4?sign=x",
+                    "backup_urls": ["http://sns-bak-v1.xhscdn.com/stream/1/10/66/live1.mp4"]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "original": "https://sns-na-i4.xhscdn.com/liveimg2?imageView2/2/w/5000/h/5000/format/webp"
+        }
+      ],
+      "share_info": {
+        "link": "https://www.xiaohongshu.com/discovery/item/eeeeeeeeeeeeeeeeeeeeeeee?xsec_token=TEST"
+      }
+    }
+  ]
+}

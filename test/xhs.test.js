@@ -16,6 +16,7 @@ const {
   mergeCache,
   buildPayload,
   buildShortcutUrl,
+  sanitizeName,
   parseNoteId,
   parseLikeBody,
   parseCollectBody,
@@ -180,17 +181,59 @@ test('mergeCache: 按 id 去重并按 ts 倒序截断到 cap', () => {
   assert.equal(out[1].id, '222222222222222222222222');
 });
 
-test('buildPayload: 键固定为 t/a/i/v/s/id', () => {
+test('buildPayload: 键固定为 t/a/i/l/v/s/id/f，l 与 i 对齐', () => {
   const p = buildPayload({
     id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
     title: 't',
     author: 'a',
-    imgs: ['https://x/1'],
+    uid: 'u1',
+    imgs: ['https://x/1', 'https://x/2'],
+    live: { 'https://x/2': 'https://live/2' },
     v: '',
     share: 'https://s',
   });
-  assert.deepEqual(Object.keys(p).sort(), ['a', 'i', 'id', 's', 't', 'v']);
-  assert.deepEqual(p.i, ['https://x/1']);
+  assert.deepEqual(Object.keys(p).sort(), ['a', 'f', 'i', 'id', 'l', 's', 't', 'v']);
+  assert.deepEqual(p.i, ['https://x/1', 'https://x/2']);
+  assert.deepEqual(p.l, ['', 'https://live/2']);
+  assert.equal(p.f, 'a_u1_t');
+});
+
+test('sanitizeName: 去掉文件名非法字符', () => {
+  const s = sanitizeName('a/b:c*?"<>|d');
+  assert.ok(!/[\\/:*?"<>|]/.test(s), s);
+  assert.ok(s.startsWith('a-b-c'), s);
+  assert.ok(s.endsWith('d'), s);
+});
+
+test('extractNotes: 实况图的 live 视频与图片配对', () => {
+  const n = extractNotes(fixture('livefeed.json'))[0];
+  assert.equal(n.imgs.length, 2);
+  assert.equal(n.uid, '123456789');
+  assert.equal(
+    n.live['https://sns-na-i4.xhscdn.com/liveimg1'],
+    'https://sns-bak-v1.xhscdn.com/stream/1/10/66/live1.mp4'
+  );
+  assert.equal(n.live['https://sns-na-i4.xhscdn.com/liveimg2'], undefined);
+
+  const p = buildPayload(n);
+  assert.deepEqual(p.i, [
+    'https://sns-na-i4.xhscdn.com/liveimg1',
+    'https://sns-na-i4.xhscdn.com/liveimg2',
+  ]);
+  assert.deepEqual(p.l, [
+    'https://sns-bak-v1.xhscdn.com/stream/1/10/66/live1.mp4',
+    '',
+  ]);
+  assert.equal(p.f, '作者E_123456789_实况测试');
+});
+
+test('mergeNotes: live 映射按图片并集合并', () => {
+  const id = 'a'.repeat(24);
+  const a = { id: id, imgs: ['https://x/1'], live: { 'https://x/1': 'https://l/1' }, v: '', ts: 1 };
+  const b = { id: id, imgs: ['https://x/2'], live: { 'https://x/2': 'https://l/2' }, v: '', ts: 2 };
+  const m = mergeNotes(a, b);
+  assert.equal(m.live['https://x/1'], 'https://l/1');
+  assert.equal(m.live['https://x/2'], 'https://l/2');
 });
 
 test('buildShortcutUrl: 名称与 JSON 都被 encode', () => {
@@ -224,15 +267,23 @@ test('parseShareBody: 从 originalShareInfo 兜底提取 note id', () => {
   assert.deepEqual(parseShareBody(body), { id: 'bbbbbbbbbbbbbbbbbbbbbbbb', channel: 'WECHAT' });
 });
 
-test('18 张图 payload 编码后 < 8000 字符', () => {
+test('18 张实况图 payload 编码后 < 12000 字符且包含全部图片', () => {
+  const imgs = Array.from({ length: 18 }, (_, i) => 'https://sns-na-i2.xhscdn.com/' + 'x'.repeat(60) + i);
+  const live = {};
+  imgs.forEach(function (u, i) { live[u] = 'https://sns-bak-v1.xhscdn.com/' + 'y'.repeat(50) + i; });
   const note = {
     id: 'a'.repeat(24),
     title: 't',
     author: 'a',
+    uid: 'u',
     share: '',
     v: '',
-    imgs: Array.from({ length: 18 }, (_, i) => 'https://sns-na-i2.xhscdn.com/' + 'x'.repeat(60) + i),
+    imgs: imgs,
+    live: live,
   };
-  const url = buildShortcutUrl('小红书源文件', buildPayload(note));
-  assert.ok(url.length < 8000, 'url length ' + url.length);
+  const payload = buildPayload(note);
+  const url = buildShortcutUrl('小红书源文件', payload);
+  assert.equal(payload.i.length, 18);
+  assert.equal(payload.l.length, 18);
+  assert.ok(url.length < 12000, 'url length ' + url.length);
 });

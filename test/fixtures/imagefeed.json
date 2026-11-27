@@ -9,7 +9,7 @@
           "type": "normal",
           "title": "测试图文",
           "desc": "描述",
-          "user": { "nickname": "作者A", "id": "cccccccccccccccccccccccc" },
+          "user": { "nickname": "作者A", "red_id": "123456789", "id": "cccccccccccccccccccccccc" },
           "images_list": [
             { "original": "https://sns-na-i2.xhscdn.com/img1?imageView2/2/w/5000/h/5000/format/webp/q/90&ap=1&sc=ORIGINAL&sign=deadbeef&t=123" },
             { "original": "https://sns-na-i2.xhscdn.com/img2?imageView2/2/w/5000/h/5000/format/webp/q/90&ap=1&sc=ORIGINAL&sign=deadbeef&t=123" }

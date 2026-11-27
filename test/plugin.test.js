@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const FILE = path.join(__dirname, '..', 'xhs.plugin');
-const SCRIPT_URL = 'https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.js?v=20261129';
+const SCRIPT_URL = 'https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.js?v=20261130';
 
 test('头部与 MITM（Loon 不用 Surge 的 %APPEND%）', () => {
   const text = fs.readFileSync(FILE, 'utf8');

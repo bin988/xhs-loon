@@ -19,7 +19,7 @@ test('README 有安装/更新/排查/隐私', () => {
 test('README 有插件 URL、脚本版本号与“必须点通知”限制', () => {
   const t = read('README.md');
   assert.ok(t.includes('https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.plugin'));
-  assert.ok(t.includes('?v=20261129'));
+  assert.ok(t.includes('?v=20261130'));
   assert.ok(t.includes('点通知'));
   assert.ok(t.includes('12 小时'));
 });
@@ -46,9 +46,20 @@ test('文档说明 clipboard 兜底依赖较新的 Loon 版本', () => {
   assert.ok(recipe.includes('较新的 Loon') || recipe.includes('Loon 版本'));
 });
 
-test('recipe 明确 payload 键 t/a/i/v/s/id 与兜底 clipboard', () => {
+test('recipe 明确 payload 键 t/a/i/u/l/f/v/s/id 与兜底 clipboard', () => {
   const t = read('shortcut-recipe.md');
-  for (const s of ['`t`', '`i`', '`v`', '`s`', '`id`', 'clipboard']) {
+  for (const s of ['`t`', '`i`', '`l`', '`f`', '`v`', '`s`', '`id`', 'clipboard']) {
     assert.ok(t.includes(s), s);
   }
+});
+
+test('文档覆盖实况视频与文件名规则', () => {
+  const readme = read('README.md');
+  const recipe = read('shortcut-recipe.md');
+  for (const t of [readme, recipe]) {
+    assert.ok(t.includes('实况'));
+    assert.ok(t.includes('_live.mp4'));
+  }
+  assert.ok(readme.includes('文件名'));
+  assert.ok(recipe.includes('作者_小红书号_标题'));
 });

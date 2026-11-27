@@ -12,15 +12,19 @@
 
 - 三种触发都要生效：点赞、收藏、复制链接（分享面板里的 COPY；其它分享渠道也一并触发）。
 - 图片取 `images_list[].original` 去掉 query 的裸链（实测为原始 JPEG）。
+- 实况照片：把 `images_list[].live_photo.media.stream` 的短视频一起下载，存成
+  `<文件名>_live.mp4`；图片和视频分开保存，不重新合成 Live Photo。
 - 视频取 `video_info_v2.media.stream` 中分辨率最高的码流，优先使用 `backup_urls[0]`
   （实测无签名、不过期、无水印）。
+- 文件名使用 `作者_小红书号_标题` 作为基名，图片/实况/视频分别加序号和后缀。
 - 全部在手机上完成，不需要任何服务器、不需要 Python。
 - 插件与 JS 放在 public GitHub 仓库，Loon 里填插件 URL 即可安装和更新。
 
 ## 非目标
 
 - 全自动（点赞后零操作）。iOS 不允许 App 在后台拉起快捷指令，必须点通知，这是硬限制。
-- 直播、评论区图片、实况照片的视频分量（后续可加）。
+- 直播、评论区图片。
+- 把图片+实况视频重新合成真正的 Live Photo（Shortcuts 没有可靠内置动作）。
 - Android / Surge / Quantumult X。
 - 服务端归档。
 
@@ -67,7 +71,9 @@ iOS 快捷指令「小红书源文件」
   id: "24位hex",
   title: "标题",
   author: "作者昵称",
+  uid: "小红书号",                         // user.red_id，可能为空
   imgs: ["https://.../原图裸链", ...],   // 去 query、https、去重
+  live: { "原图裸链": "https://.../实况视频" }, // 非实况图为空
   v: "https://.../最高清视频",            // 无视频则 ""
   share: "https://www.xiaohongshu.com/discovery/item/...", // 没有则 ""
   ts: 1795786000000
@@ -77,7 +83,15 @@ iOS 快捷指令「小红书源文件」
 ### 传给快捷指令的 payload
 
 ```js
-{ t: title, a: author, i: imgs, v: video, s: share, id: noteId }
+{
+  t: title,
+  a: author,
+  i: [{ u: imageUrl, l: liveVideoUrl }],  // l 为空串表示非实况
+  v: video,
+  s: share,
+  id: noteId,
+  f: "作者_小红书号_标题"                  // 已清洗的文件名基名
+}
 ```
 
 ### 通知

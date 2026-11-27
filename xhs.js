@@ -23,6 +23,21 @@ function tryJSON(s) {
   }
 }
 
+function sanitizeName(s) {
+  return String(s || '')
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function liveVideoUrl(item) {
+  if (!item || typeof item !== 'object') return null;
+  var lp = item.live_photo || item.livePhoto;
+  if (!lp || !lp.media || !lp.media.stream) return null;
+  var v = bestVideo(lp.media.stream);
+  return v ? v.url : null;
+}
+
 function imageUrl(item) {
   if (!item || typeof item !== 'object') return null;
   var cand = item.original || item.url_size_large || item.url_default || item.url;
@@ -136,10 +151,15 @@ function parseNote(obj) {
   if (!list && !streams) return null;
 
   var imgs = [];
+  var live = {};
   if (list) {
     for (var i = 0; i < list.length && imgs.length < 20; i++) {
       var u = imageUrl(list[i]);
-      if (u && imgs.indexOf(u) === -1) imgs.push(u);
+      if (u && imgs.indexOf(u) === -1) {
+        imgs.push(u);
+        var lu = liveVideoUrl(list[i]);
+        if (lu) live[u] = lu;
+      }
     }
   }
 
@@ -149,6 +169,7 @@ function parseNote(obj) {
     || (card && card.user) || {};
   var title = obj.title || (card && card.title) || '';
   var author = user.nickname || user.name || '';
+  var uid = user.red_id || '';
   var share = '';
   if (obj.share_info && obj.share_info.link) share = obj.share_info.link;
   else if (obj.qq_mini_program_info && obj.qq_mini_program_info.webpage_url) {
@@ -161,7 +182,9 @@ function parseNote(obj) {
     id: id,
     title: String(title || ''),
     author: String(author || ''),
+    uid: String(uid || ''),
     imgs: imgs,
+    live: live,
     v: video ? video.url : '',
     vpx: video ? video.px : 0,
     vsrc: video ? video.src : 0,
@@ -198,12 +221,28 @@ function mergeNotes(a, b) {
   for (var i = 0; i < incoming.length && imgs.length < 20; i++) {
     if (imgs.indexOf(incoming[i]) === -1) imgs.push(incoming[i]);
   }
+  var live = {};
+  var la = a.live || {};
+  var lb = b.live || {};
+  for (var lk in la) {
+    if (Object.prototype.hasOwnProperty.call(la, lk)) live[lk] = la[lk];
+  }
+  for (var lk2 in lb) {
+    if (Object.prototype.hasOwnProperty.call(lb, lk2)) live[lk2] = lb[lk2];
+  }
+  var liveKept = {};
+  for (var li = 0; li < imgs.length; li++) {
+    if (live[imgs[li]]) liveKept[imgs[li]] = live[imgs[li]];
+  }
+
   var vid = betterVideo(a, b);
   return {
     id: a.id,
     title: b.title || a.title || '',
     author: b.author || a.author || '',
+    uid: b.uid || a.uid || '',
     imgs: imgs,
+    live: liveKept,
     v: vid.v,
     vpx: vid.vpx,
     vsrc: vid.vsrc,
@@ -251,7 +290,9 @@ function mergeCache(cache, notes, now, cap) {
       id: n.id,
       title: n.title || '',
       author: n.author || '',
+      uid: n.uid || '',
       imgs: (n.imgs || []).slice(0, 20),
+      live: n.live || {},
       v: n.v || '',
       vpx: n.vpx || 0,
       vsrc: n.vsrc || 0,
@@ -273,14 +314,33 @@ function mergeCache(cache, notes, now, cap) {
   return arr.slice(0, cap || 20);
 }
 
+function filenameBase(note) {
+  var parts = [];
+  var a = sanitizeName(note.author);
+  var u = sanitizeName(note.uid);
+  var t = sanitizeName(note.title);
+  if (a) parts.push(a);
+  if (u) parts.push(u);
+  if (t) parts.push(t);
+  var base = parts.join('_');
+  if (!base) base = note.id || '';
+  return base.slice(0, 80);
+}
+
 function buildPayload(note) {
+  var live = note.live || {};
+  var imgs = (note.imgs || []).slice(0, 20);
+  var lives = [];
+  for (var i = 0; i < imgs.length; i++) lives.push(live[imgs[i]] || '');
   return {
     t: note.title || '',
     a: note.author || '',
-    i: (note.imgs || []).slice(0, 20),
+    i: imgs,
+    l: lives,
     v: note.v || '',
     s: note.share || '',
-    id: note.id || ''
+    id: note.id || '',
+    f: filenameBase(note)
   };
 }
 
@@ -392,7 +452,13 @@ function trigger(note, source) {
     openUrl: buildShortcutUrl(SHORTCUT_NAME, payload),
     clipboard: JSON.stringify(payload)
   };
-  var text = '点击保存 ' + payload.i.length + ' 图' + (payload.v ? ' + 视频' : '');
+  var liveCount = 0;
+  for (var li = 0; li < payload.i.length; li++) {
+    if (payload.i[li].l) liveCount++;
+  }
+  var text = '点击保存 ' + payload.i.length + ' 图'
+    + (liveCount ? '（含 ' + liveCount + ' 实况）' : '')
+    + (payload.v ? ' + 视频' : '');
   try {
     $notification.post('小红书 · 源文件', note.title || note.id, text, attach);
   } catch (e) {
@@ -561,6 +627,9 @@ if (typeof module !== 'undefined' && module.exports) {
     bareUrl: bareUrl,
     tryJSON: tryJSON,
     imageUrl: imageUrl,
+    sanitizeName: sanitizeName,
+    liveVideoUrl: liveVideoUrl,
+    filenameBase: filenameBase,
     pickVideoUrl: pickVideoUrl,
     bestVideo: bestVideo,
     parseNote: parseNote,
