@@ -396,6 +396,7 @@ function parseShareBody(body) {
 // ===== Loon runtime glue =================================================
 
 var SHORTCUT_NAME = '小红书源文件';
+var ITEM_SHORTCUT_NAME = '小红书单张';
 var CACHE_KEY = 'xhs_cache_v1';
 var DONE_KEY = 'xhs_done_v1';
 var PENDING_KEY = 'xhs_pending_like_v1';
@@ -448,28 +449,52 @@ function trigger(note, source) {
   }
 
   var payload = buildPayload(note);
-  var attach = {
-    openUrl: buildShortcutUrl(SHORTCUT_NAME, payload),
-    clipboard: JSON.stringify(payload)
-  };
-  // 通知 body 直接放一份最小 payload，供 iOS 27「收到通知时」自动化读取；
-  // 太长（>3500 字）时退回人类可读文案，此时只能点通知走 openUrl。
-  var auto = { f: payload.f, i: payload.i, l: payload.l, v: payload.v };
-  var autoJson = JSON.stringify(auto);
-  var text;
-  if (autoJson.length <= 3500) {
-    text = autoJson;
-  } else {
-    var liveCount = 0;
-    for (var li = 0; li < payload.i.length; li++) {
-      if (payload.l[li]) liveCount++;
-    }
-    text = '点击保存 ' + payload.i.length + ' 图'
-      + (liveCount ? '（含 ' + liveCount + ' 实况）' : '')
-      + (payload.v ? ' + 视频' : '');
+  var title = note.title || note.id;
+  var count = payload.i.length;
+  var liveCount = 0;
+  for (var li = 0; li < count; li++) {
+    if (payload.l[li]) liveCount++;
   }
+
+  // 逐项通知：body 只放一条媒体（~300 字），避免 iOS 27 通知正文截断。
+  // 自动化按标题「小红书 · 单张」逐条运行「小红书单张」快捷指令。
+  // 汇总通知：body 是人类可读文案，openUrl 是完整 payload，供手动一次保存全部。
   try {
-    $notification.post('小红书 · 源文件', note.title || note.id, text, attach);
+    for (var idx = 0; idx < count; idx++) {
+      var item = {
+        f: payload.f,
+        n: idx + 1,
+        u: payload.i[idx],
+        l: payload.l[idx] || '',
+        v: ''
+      };
+      var itemJson = JSON.stringify(item);
+      $notification.post('小红书 · 单张', title + ' ' + (idx + 1) + '/' + count, itemJson, {
+        openUrl: buildShortcutUrl(ITEM_SHORTCUT_NAME, item),
+        clipboard: itemJson
+      }, idx * 250);
+    }
+    if (payload.v) {
+      var videoItem = { f: payload.f, n: 0, u: '', l: '', v: payload.v };
+      var videoJson = JSON.stringify(videoItem);
+      $notification.post('小红书 · 单张', title + ' 视频', videoJson, {
+        openUrl: buildShortcutUrl(ITEM_SHORTCUT_NAME, videoItem),
+        clipboard: videoJson
+      }, count * 250);
+    }
+
+    var summaryText;
+    if (count) {
+      summaryText = '点击保存 ' + count + ' 图'
+        + (liveCount ? '（含 ' + liveCount + ' 实况）' : '')
+        + (payload.v ? ' + 视频' : '');
+    } else {
+      summaryText = payload.v ? '点击保存视频' : '没有可保存的媒体';
+    }
+    $notification.post('小红书 · 全部', title, summaryText, {
+      openUrl: buildShortcutUrl(SHORTCUT_NAME, payload),
+      clipboard: JSON.stringify(payload)
+    });
   } catch (e) {
     return false;
   }

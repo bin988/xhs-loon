@@ -19,7 +19,7 @@ test('README 有安装/更新/排查/隐私', () => {
 test('README 有插件 URL、脚本版本号与“必须点通知”限制', () => {
   const t = read('README.md');
   assert.ok(t.includes('https://raw.githubusercontent.com/bin988/xhs-loon/main/xhs.plugin'));
-  assert.ok(t.includes('?v=20261131'));
+  assert.ok(t.includes('?v=20261132'));
   assert.ok(t.includes('点通知'));
   assert.ok(t.includes('12 小时'));
 });
@@ -59,6 +59,18 @@ test('README 覆盖 iOS 27 后台自动化', () => {
     assert.ok(t.includes(s), s);
   }
   assert.ok(read('shortcut-recipe.md').includes('零点击'));
+});
+
+test('文档覆盖逐项通知与小红书单张', () => {
+  const readme = read('README.md');
+  const recipe = read('shortcut-recipe.md');
+  assert.ok(readme.includes('小红书单张'));
+  assert.ok(readme.includes('单张'));
+  assert.ok(readme.includes('Skip Runs'));
+  assert.ok(recipe.includes('小红书单张'));
+  for (const s of ['f_n.jpg', 'f_n_live.mp4', 'f_video.mp4']) {
+    assert.ok(recipe.includes(s), s);
+  }
 });
 
 test('文档覆盖实况视频与文件名规则', () => {

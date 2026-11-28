@@ -39,8 +39,8 @@ function newEnv() {
         },
       },
       $notification: {
-        post: function (title, subtitle, content, attach) {
-          notices.push({ title: title, subtitle: subtitle, content: content, attach: attach });
+        post: function (title, subtitle, content, attach, delay) {
+          notices.push({ title: title, subtitle: subtitle, content: content, attach: attach, delay: delay });
         },
       },
       $done: function (v) { dones.push(v === undefined ? {} : v); },
@@ -60,6 +60,14 @@ function newEnv() {
   return { store, notices, dones, run };
 }
 
+function itemNotices(env) {
+  return env.notices.filter(function (n) { return n.title === '小红书 · 单张'; });
+}
+
+function summaryNotice(env) {
+  return env.notices.find(function (n) { return n.title === '小红书 · 全部'; });
+}
+
 test('imagefeed 响应写入缓存', () => {
   const env = newEnv();
   env.run({ url: URL_CACHE_IMG, respBody: fixture('imagefeed.json') });
@@ -70,25 +78,21 @@ test('imagefeed 响应写入缓存', () => {
   assert.equal(env.dones.length, 1);
 });
 
-test('like 请求+响应(true) 弹通知，openUrl 含原图', () => {
+test('like 请求+响应(true) 拆成逐项通知 + 汇总通知', () => {
   const env = newEnv();
   env.run({ url: URL_CACHE_IMG, respBody: fixture('imagefeed.json') });
   env.run({ url: URL_LIKE, method: 'POST', reqBody: 'oid=discovery.' + ID_IMG });
   assert.equal(env.notices.length, 0, '请求阶段不能弹');
   env.run({ url: URL_LIKE, method: 'POST', reqBody: '', respBody: '{"data":{"inlikes":true}}' });
 
-  assert.equal(env.notices.length, 1);
-  const n = env.notices[0];
-  assert.equal(n.title, '小红书 · 源文件');
-  assert.equal(n.subtitle, '测试图文');
-  const auto = JSON.parse(n.content);
-  assert.equal(auto.f, '作者A_123456789_测试图文');
-  assert.equal(auto.i.length, 2);
-  assert.deepEqual(auto.l, ['', '']);
-  assert.equal(auto.v, '');
-  const url = decodeURIComponent(n.attach.openUrl);
-  assert.ok(url.includes('https://sns-na-i2.xhscdn.com/img1'));
-  const payload = JSON.parse(n.attach.clipboard);
+  const its = itemNotices(env);
+  assert.equal(its.length, 2);
+  const s = summaryNotice(env);
+  assert.ok(s, '应有汇总通知');
+  assert.equal(s.subtitle, '测试图文');
+  assert.match(s.content, /2 图/);
+
+  const payload = JSON.parse(s.attach.clipboard);
   assert.deepEqual(payload.i, [
     'https://sns-na-i2.xhscdn.com/img1',
     'https://sns-na-i2.xhscdn.com/img2',
@@ -96,6 +100,13 @@ test('like 请求+响应(true) 弹通知，openUrl 含原图', () => {
   assert.deepEqual(payload.l, ['', '']);
   assert.equal(payload.id, ID_IMG);
   assert.equal(payload.f, '作者A_123456789_测试图文');
+
+  const i1 = JSON.parse(its[0].content);
+  assert.deepEqual(i1, { f: payload.f, n: 1, u: 'https://sns-na-i2.xhscdn.com/img1', l: '', v: '' });
+  assert.equal(JSON.parse(its[1].content).n, 2);
+  assert.ok(decodeURIComponent(its[0].attach.openUrl).includes('name=小红书单张'));
+  assert.ok(decodeURIComponent(s.attach.openUrl).includes('name=小红书源文件'));
+  assert.ok(its[0].content.length < 500);
   assert.equal(env.dones.length, 3);
 });
 
@@ -111,8 +122,8 @@ test('collect 触发', () => {
   const env = newEnv();
   env.run({ url: URL_CACHE_IMG, respBody: fixture('imagefeed.json') });
   env.run({ url: URL_COLLECT, method: 'POST', reqBody: JSON.stringify({ source: 'explore_feed', note_id: ID_IMG }) });
-  assert.equal(env.notices.length, 1);
-  assert.equal(JSON.parse(env.notices[0].attach.clipboard).id, ID_IMG);
+  assert.equal(itemNotices(env).length, 2);
+  assert.equal(JSON.parse(summaryNotice(env).attach.clipboard).id, ID_IMG);
 });
 
 test('share COPY 触发；share 面板无 shareChannel 不触发', () => {
@@ -131,7 +142,8 @@ test('share COPY 触发；share 面板无 shareChannel 不触发', () => {
       extraInfo: { originalShareInfo: { content: 'https://www.xiaohongshu.com/discovery/item/' + ID_IMG } },
     }),
   });
-  assert.equal(env.notices.length, 1);
+  assert.equal(itemNotices(env).length, 2);
+  assert.ok(summaryNotice(env));
 });
 
 test('触发早于缓存：不弹；缓存到达后补弹一次', () => {
@@ -141,7 +153,8 @@ test('触发早于缓存：不弹；缓存到达后补弹一次', () => {
   assert.ok(env.store['xhs_wanted_v1'], '应记录 wanted');
 
   env.run({ url: URL_CACHE_IMG, respBody: fixture('imagefeed.json') });
-  assert.equal(env.notices.length, 1, '缓存到达后应补弹');
+  assert.equal(itemNotices(env).length, 2, '缓存到达后应补弹');
+  assert.ok(summaryNotice(env));
 });
 
 test('12h 内重复触发只弹一次', () => {
@@ -151,7 +164,7 @@ test('12h 内重复触发只弹一次', () => {
   env.run({ url: URL_COLLECT, method: 'POST', reqBody: body });
   env.run({ url: URL_COLLECT, method: 'POST', reqBody: body });
   env.run({ url: URL_COLLECT, method: 'POST', reqBody: body });
-  assert.equal(env.notices.length, 1);
+  assert.equal(env.notices.length, 3, '2 个逐项 + 1 个汇总');
 });
 
 test('视频笔记 payload 含 4K backup 与封面', () => {
@@ -160,14 +173,23 @@ test('视频笔记 payload 含 4K backup 与封面', () => {
   env.run({ url: URL_LIKE, method: 'POST', reqBody: 'oid=discovery.' + ID_VIDEO });
   env.run({ url: URL_LIKE, method: 'POST', reqBody: '', respBody: '{"data":{"inlikes":true}}' });
 
-  assert.equal(env.notices.length, 1);
-  const payload = JSON.parse(env.notices[0].attach.clipboard);
+  const its = itemNotices(env);
+  assert.equal(its.length, 2);
+  const s = summaryNotice(env);
+  const payload = JSON.parse(s.attach.clipboard);
   assert.equal(payload.v, 'https://sns-bak-v1.xhscdn.com/4k.mp4');
   assert.deepEqual(payload.i, ['https://sns-na-i2.xhscdn.com/cover']);
   assert.deepEqual(payload.l, ['']);
-  const auto = JSON.parse(env.notices[0].content);
-  assert.equal(auto.v, 'https://sns-bak-v1.xhscdn.com/4k.mp4');
-  assert.equal(auto.f, '作者B_测试视频');
+  assert.match(s.content, /视频/);
+
+  const imageItem = JSON.parse(its[0].content);
+  assert.equal(imageItem.u, 'https://sns-na-i2.xhscdn.com/cover');
+  assert.equal(imageItem.n, 1);
+  const videoItem = JSON.parse(its[1].content);
+  assert.equal(videoItem.v, 'https://sns-bak-v1.xhscdn.com/4k.mp4');
+  assert.equal(videoItem.u, '');
+  assert.equal(videoItem.n, 0);
+  assert.equal(videoItem.f, '作者B_测试视频');
 });
 
 test('实况图 payload 带上 live 视频与文件名', () => {
@@ -175,10 +197,13 @@ test('实况图 payload 带上 live 视频与文件名', () => {
   const id = 'eeeeeeeeeeeeeeeeeeeeeeee';
   env.run({ url: 'https://edith.xiaohongshu.com/api/sns/v1/note/imagefeed?note_id=' + id, respBody: fixture('livefeed.json') });
   env.run({ url: URL_COLLECT, method: 'POST', reqBody: JSON.stringify({ note_id: id }) });
-  assert.equal(env.notices.length, 1);
-  const payload = JSON.parse(env.notices[0].attach.clipboard);
+  const its = itemNotices(env);
+  assert.equal(its.length, 2);
+  const payload = JSON.parse(summaryNotice(env).attach.clipboard);
   assert.deepEqual(payload.l, ['https://sns-bak-v1.xhscdn.com/stream/1/10/66/live1.mp4', '']);
   assert.equal(payload.f, '作者E_123456789_实况测试');
+  assert.equal(JSON.parse(its[0].content).l, 'https://sns-bak-v1.xhscdn.com/stream/1/10/66/live1.mp4');
+  assert.equal(JSON.parse(its[1].content).l, '');
 });
 
 test('uncollect 与 like/page 不触发', () => {
